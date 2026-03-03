@@ -1670,14 +1670,22 @@ function cumpleFrom(meta, resultado){
 }
 function getFichaFactor(ficha){
   if(!ficha) return 1;
-  const explicit = Number(ficha.FormulaFactor ?? ficha.Factor);
-  if(Number.isFinite(explicit) && explicit > 0) return explicit;
+  const formulaTxt = String(ficha.Formula || "");
+  const m = formulaTxt.match(/\*\s*(1000|100)\b/);
+  if(m) return Number(m[1]);
 
   const tipo = String(ficha.FormulaTipo || "").toLowerCase();
   const etiqueta = String(ficha.FormulaEtiqueta || ficha.Etiqueta || "").toLowerCase();
 
   if(tipo.includes("porcentaje") || etiqueta.includes("%") || etiqueta.includes("porcentaje")) return 100;
-  if(tipo.includes("tasa")) return 1000;
+  if(tipo.includes("tasa") || etiqueta.includes("tasa")) return 1000;
+
+  const explicit = Number(ficha.FormulaFactor ?? ficha.Factor);
+  if(Number.isFinite(explicit) && explicit > 0) return explicit;
+
+  // Fallback seguro para fichas viejas: si no hay pista clara y venía en 1,
+  // usar porcentaje por defecto (caso más común en tus indicadores).
+  if(explicit === 1 || !Number.isFinite(explicit)) return 100;
   return 1;
 }
 function fmtNum(n){
@@ -1828,6 +1836,26 @@ function renderAnalisis(){
             </div>
           </div>
 
+          <!-- FIRMAS (OBLIGATORIO) -->
+          <div id="a_FirmasCard" class="card ring-1 ring-sky-200">
+            <div class="card-h">
+              <div class="font-extrabold text-navy">Firmas (obligatorio)</div>
+              <div class="text-xs text-slate-500">Carga firma del responsable y firma/recibido de Calidad.</div>
+            </div>
+            <div class="card-b grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label class="text-xs font-extrabold text-slate-600">Firma responsable *</label>
+                <input id="a_FirmaResponsable" type="file" accept="image/*" class="input mt-1"/>
+                <div id="a_FirmaResponsablePrev" class="mt-2"></div>
+              </div>
+              <div>
+                <label class="text-xs font-extrabold text-slate-600">Firma área de calidad *</label>
+                <input id="a_FirmaCalidad" type="file" accept="image/*" class="input mt-1"/>
+                <div id="a_FirmaCalidadPrev" class="mt-2"></div>
+              </div>
+            </div>
+          </div>
+
           <!-- PROPUESTAS (solo NO CUMPLE) -->
           <div class="card">
             <div class="card-h">
@@ -1858,27 +1886,8 @@ function renderAnalisis(){
             </div>
           </div>
 
-          <!-- FIRMAS (OBLIGATORIO) -->
-          <div class="card">
-            <div class="card-h">
-              <div class="font-extrabold text-navy">Firmas (obligatorio)</div>
-              <div class="text-xs text-slate-500">Carga firma del responsable y firma/recibido de Calidad.</div>
-            </div>
-            <div class="card-b grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label class="text-xs font-extrabold text-slate-600">Firma responsable *</label>
-                <input id="a_FirmaResponsable" type="file" accept="image/*" class="input mt-1"/>
-                <div id="a_FirmaResponsablePrev" class="mt-2"></div>
-              </div>
-              <div>
-                <label class="text-xs font-extrabold text-slate-600">Firma área de calidad *</label>
-                <input id="a_FirmaCalidad" type="file" accept="image/*" class="input mt-1"/>
-                <div id="a_FirmaCalidadPrev" class="mt-2"></div>
-              </div>
-            </div>
-          </div>
-
           <div class="flex flex-wrap gap-2">
+            <button id="btnAIrFirmas" class="btn btn-soft">Ir a firmas</button>
             <button id="btnABorrador" class="btn btn-soft">Guardar borrador</button>
             <button id="btnAGuardar" class="btn btn-primary">Guardar y generar reporte (MVP: guarda)</button>
             <button id="btnAnalisisGen" class="btn btn-primary">Generar Word/PDF</button>
@@ -1931,6 +1940,9 @@ function renderAnalisis(){
   $("btnAGuardar").addEventListener("click", ()=>guardarAnalisis("FINAL"));
   $("btnAnalisisGen").addEventListener("click", ()=>generateAnalisisDoc());
   $("btnAPDF").addEventListener("click", ()=>openAnalisisPreviewPDF());
+  $("btnAIrFirmas").addEventListener("click", ()=>{
+    $("a_FirmasCard")?.scrollIntoView({ behavior:"smooth", block:"center" });
+  });
   $("btnACancelar").addEventListener("click", ()=>{
     resetAnalisisUI(true);
     showSection("secInicio");
